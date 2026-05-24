@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ZONE 2 — Runner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;900&family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f4f0;--surface:#fff;--card:#fff;--border:#e0e8e0;
+  --text:#2a3a2a;--muted:#8a9a8a;--accent:#4caf82;
+  --z1c:#2d7a52;--z1bg:#d8f5e8;--z1border:#a8dfbc;
+  --z2c:#2a6a8a;--z2bg:#dff0f7;--z2border:#90ccde;
+  --z3c:#7a3a5a;--z3bg:#fce4ec;--z3border:#e8a0b8;
+  --z4c:#8a3020;--z4bg:#fdecea;--z4border:#e8a090;
+  --z5c:#5a2090;--z5bg:#f3e5f5;--z5border:#cc90d8;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);overflow-x:hidden;
+  font-family:'Barlow Condensed',sans-serif;-webkit-font-smoothing:antialiased}
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+
+/* ── SETUP ── */
+#setup{align-items:center;justify-content:flex-start;
+  background:linear-gradient(160deg,#e8f5e9 0%,#e3f2fd 100%);
+  padding:24px 20px 40px;overflow-y:auto;gap:0}
+.logo-wrap{text-align:center;margin-bottom:20px;margin-top:8px}
+.logo-word{font-size:clamp(52px,13vw,80px);font-weight:900;letter-spacing:-2px;line-height:0.9;
+  background:linear-gradient(135deg,#2d8a5e 0%,#3a7fa8 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.logo-sub{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:4px;
+  color:var(--muted);margin-top:6px;text-transform:uppercase}
+.setup-card{width:100%;max-width:440px;background:rgba(255,255,255,0.85);
+  border:1px solid #d0e8d8;border-radius:24px;padding:22px;
+  display:flex;flex-direction:column;gap:16px;
+  backdrop-filter:blur(10px);box-shadow:0 4px 24px rgba(60,120,80,0.08)}
+.field-label{font-size:10px;letter-spacing:2px;color:var(--muted);
+  text-transform:uppercase;margin-bottom:6px;font-family:'JetBrains Mono',monospace}
+.age-input{width:100%;background:#f4fdf6;border:1.5px solid #c0dfc8;border-radius:12px;
+  padding:11px 16px;color:var(--text);font-family:'JetBrains Mono',monospace;
+  font-size:17px;outline:none;transition:border-color .2s}
+.age-input:focus{border-color:var(--accent)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+/* Method selector */
+.method-tabs{display:flex;gap:6px}
+.method-tab{flex:1;padding:10px 6px;border-radius:10px;border:1.5px solid #d0e0d0;
+  background:#f4fdf6;cursor:pointer;text-align:center;
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;
+  color:var(--muted);transition:all .2s}
+.method-tab.active{background:var(--z2bg);border-color:var(--z2border);color:var(--z2c)}
+.method-desc{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;
+  background:#f4fdf6;border-radius:8px;padding:10px 12px;line-height:1.5}
+.method-field{display:none}
+.method-field.show{display:block}
+
+/* Zone table */
+.zone-table{background:#f4fdf6;border-radius:14px;overflow:hidden;border:1px solid #d0e8d8}
+.zone-tr{display:flex;align-items:center;padding:9px 14px;border-bottom:1px solid #e0eee4;gap:10px}
+.zone-tr:last-child{border-bottom:none}
+.zone-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.zone-name{font-size:13px;font-weight:700;width:70px;flex-shrink:0}
+.zone-range{font-family:'JetBrains Mono',monospace;font-size:12px;flex:1;color:var(--muted)}
+.zone-pct{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.zone-tr.target-zone{background:var(--z2bg)}
+
+/* Alert sound section */
+.sound-row{display:flex;align-items:center;gap:8px}
+.sound-select{flex:1;background:#f4fdf6;border:1.5px solid #c0dfc8;border-radius:10px;
+  padding:9px 12px;color:var(--text);font-family:'Barlow Condensed',sans-serif;
+  font-size:14px;font-weight:600;outline:none}
+.btn-preview{background:var(--z2bg);color:var(--z2c);border:1.5px solid var(--z2border);
+  border-radius:10px;padding:9px 14px;font-family:'Barlow Condensed',sans-serif;
+  font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.btn-preview:active{opacity:.7}
+
+/* HR connect */
+.hr-status{display:flex;align-items:center;gap:10px;padding:12px 16px;
+  background:#f4fdf6;border-radius:12px;border:1.5px solid #c0e0cc;cursor:pointer;transition:border-color .2s}
+.hr-status:hover{border-color:#3a7fa8}
+.hr-dot{width:10px;height:10px;border-radius:50%;background:#c0c8c0;transition:background .3s;flex-shrink:0}
+.hr-dot.connected{background:#4caf82;animation:pulse-dot 1.5s infinite}
+.hr-dot.connecting{background:#e07060;animation:blink .6s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.4)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.hr-label{font-size:14px;font-weight:600;flex:1;color:var(--text)}
+.hr-detail{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+
+.btn-primary{background:linear-gradient(135deg,#2d8a5e,#3a7fa8);color:#fff;border:none;
+  border-radius:14px;padding:16px;font-family:'Barlow Condensed',sans-serif;
+  font-size:18px;font-weight:700;letter-spacing:1px;cursor:pointer;
+  transition:opacity .2s,transform .1s;text-transform:uppercase;
+  box-shadow:0 4px 16px rgba(45,138,94,0.25)}
+.btn-primary:active{transform:scale(.97);opacity:.85}
+.btn-secondary{background:transparent;color:var(--muted);border:1.5px solid #c0d8c8;
+  border-radius:14px;padding:12px;font-family:'Barlow Condensed',sans-serif;
+  font-size:15px;font-weight:600;letter-spacing:1px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.btn-secondary:hover{border-color:#3a7fa8;color:#3a7fa8}
+
+/* GPS waiting overlay */
+#gpsWait{position:fixed;inset:0;background:rgba(232,245,233,0.96);z-index:200;
+  display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;
+  backdrop-filter:blur(8px)}
+#gpsWait.show{display:flex}
+.gps-spinner{width:56px;height:56px;border:4px solid #c0e0cc;
+  border-top-color:#4caf82;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.gps-wait-title{font-size:28px;font-weight:900;color:#2a3a2a;letter-spacing:-1px}
+.gps-wait-sub{font-size:14px;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center;padding:0 32px}
+
+/* ── RUN ── */
+#run{padding:0;position:relative;overflow:hidden;transition:background 1.2s ease}
+#run.zone-none{background:#eef2ee}
+#run.zone-ok  {background:#dff0f7}
+#run.zone-low {background:#d8f5e8}
+#run.zone-high{background:#fce4ec}
+.run-content{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+.run-topbar{display:flex;justify-content:space-between;align-items:center;padding:12px 16px 4px;gap:8px}
+.elapsed-badge{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;
+  color:var(--text);background:rgba(255,255,255,0.75);border-radius:10px;
+  padding:6px 14px;border:1px solid rgba(0,0,0,0.08);backdrop-filter:blur(6px)}
+.gps-badge{display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;
+  font-size:10px;color:var(--muted);padding:5px 10px;
+  background:rgba(255,255,255,0.75);border-radius:10px;
+  border:1px solid rgba(0,0,0,0.08);backdrop-filter:blur(6px)}
+.gps-dot{width:6px;height:6px;border-radius:50%;background:#c0c8c0}
+.gps-dot.active{background:#4caf82;animation:pulse-dot 2s infinite}
+
+.hr-display{text-align:center;padding:8px 20px 2px}
+.hr-number{font-size:clamp(80px,20vw,120px);font-weight:900;line-height:.85;letter-spacing:-4px;transition:color .6s,text-shadow .6s}
+.hr-number.zone-ok  {color:#2a6a8a;text-shadow:0 4px 24px rgba(42,106,138,.2)}
+.hr-number.zone-low {color:#2d7a52;text-shadow:0 4px 24px rgba(45,122,82,.2)}
+.hr-number.zone-high{color:#b04060;text-shadow:0 4px 24px rgba(176,64,96,.25)}
+.hr-number.no-hr    {color:#a0b0a0;text-shadow:none}
+.hr-unit{font-size:14px;font-weight:600;color:var(--muted);letter-spacing:2px;margin-top:2px;font-family:'JetBrains Mono',monospace}
+
+.zone-chip{display:inline-block;padding:4px 14px;border-radius:99px;
+  font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+  font-family:'JetBrains Mono',monospace;margin-top:4px;transition:background .5s,color .5s}
+.zone-chip.zone-ok  {background:rgba(42,106,138,.12);color:#2a6a8a}
+.zone-chip.zone-low {background:rgba(45,122,82,.12);color:#2d7a52}
+.zone-chip.zone-high{background:rgba(176,64,96,.12);color:#b04060}
+.zone-chip.no-hr    {background:rgba(0,0,0,.06);color:var(--muted)}
+
+/* Zone bar with all 5 zones */
+.zone-bar-wrap{padding:4px 16px 0}
+.zone-bar-label{display:flex;justify-content:space-between;font-size:9px;
+  font-family:'JetBrains Mono',monospace;color:var(--muted);margin-bottom:3px}
+.zone-bar-multi{height:8px;border-radius:99px;overflow:hidden;display:flex;position:relative;background:#e0e8e0}
+.zb-seg{height:100%;transition:none}
+.zone-needle{position:absolute;top:-3px;bottom:-3px;width:3px;border-radius:2px;
+  background:#2a3a2a;transition:left .6s ease;box-shadow:0 0 4px rgba(0,0,0,.3)}
+
+.alert-banner{margin:4px 16px;padding:9px 16px;border-radius:10px;font-size:13px;
+  font-weight:700;letter-spacing:1px;text-transform:uppercase;text-align:center;border:1px solid;
+  opacity:0;transform:translateY(-6px);transition:opacity .3s,transform .3s;pointer-events:none}
+.alert-banner.show{opacity:1;transform:translateY(0)}
+.alert-banner.slow{background:rgba(45,122,82,.12);border-color:#4caf82;color:#2d7a52}
+.alert-banner.fast{background:rgba(176,64,96,.12);border-color:#c06080;color:#b04060}
+
+.pace-row{display:flex;align-items:flex-end;gap:8px;padding:4px 16px}
+.pace-big{font-size:26px;font-weight:700;letter-spacing:-1px;transition:color .5s}
+.pace-big.zone-ok  {color:#2a6a8a}
+.pace-big.zone-low {color:#2d7a52}
+.pace-big.zone-high{color:#b04060}
+.pace-big.no-hr    {color:var(--muted)}
+.pace-unit{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:4px}
+.pace-sep{flex:1}
+
+.map-wrap{margin:4px 16px;border-radius:14px;overflow:hidden;flex-shrink:0;
+  border:1px solid rgba(0,0,0,.08);box-shadow:0 2px 10px rgba(0,0,0,.07)}
+#runMap{width:100%;height:150px}
+
+.stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;padding:4px 16px;flex-shrink:0}
+.stat-card{background:rgba(255,255,255,.65);border:1px solid rgba(0,0,0,.07);
+  border-radius:12px;padding:10px 10px;backdrop-filter:blur(6px)}
+.stat-label{font-size:9px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;
+  font-family:'JetBrains Mono',monospace;margin-bottom:3px}
+.stat-val{font-size:21px;font-weight:700;line-height:1;letter-spacing:-.5px}
+.stat-unit{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:1px}
+
+.run-controls{padding:6px 16px 24px;display:flex;gap:10px;margin-top:auto}
+.btn-stop{flex:1;background:rgba(208,64,96,.1);color:#c0405a;border:1.5px solid #d07090;
+  border-radius:14px;padding:15px;font-family:'Barlow Condensed',sans-serif;
+  font-size:20px;font-weight:700;letter-spacing:2px;cursor:pointer;text-transform:uppercase;transition:all .2s}
+.btn-stop:active{background:#d04060;color:#fff}
+.btn-pause{width:52px;background:rgba(255,255,255,.7);color:var(--text);
+  border:1.5px solid rgba(0,0,0,.1);border-radius:14px;font-size:20px;
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(6px)}
+.notice{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;
+  text-align:center;padding:0 16px 2px}
+
+/* ── PAUSE ── */
+.pause-overlay{position:fixed;inset:0;background:rgba(232,245,233,.94);
+  display:none;align-items:center;justify-content:center;z-index:100;
+  flex-direction:column;gap:16px;backdrop-filter:blur(10px)}
+.pause-overlay.show{display:flex}
+.pause-text{font-size:48px;font-weight:900;letter-spacing:4px;color:#2a3a2a}
+.pause-sub{font-size:14px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.btn-resume{background:linear-gradient(135deg,#2d8a5e,#3a7fa8);color:#fff;border:none;
+  border-radius:14px;padding:16px 40px;font-family:'Barlow Condensed',sans-serif;
+  font-size:22px;font-weight:700;letter-spacing:2px;cursor:pointer;text-transform:uppercase}
+
+/* ── SUMMARY ── */
+#summary{background:linear-gradient(160deg,#e8f5e9 0%,#e3f2fd 100%);
+  padding:24px 20px 40px;overflow-y:auto;align-items:center}
+.summary-inner{width:100%;max-width:440px}
+.summary-header{text-align:center;margin-bottom:16px}
+.summary-tag{font-size:11px;letter-spacing:4px;color:#4caf82;font-family:'JetBrains Mono',monospace;text-transform:uppercase;margin-bottom:6px}
+.summary-title{font-size:40px;font-weight:900;letter-spacing:-1px;line-height:1;color:#2a3a2a}
+.summary-date{font-size:11px;color:var(--muted);margin-top:6px;font-family:'JetBrains Mono',monospace}
+.sum-map-wrap{border-radius:16px;overflow:hidden;margin-bottom:12px;border:1px solid rgba(0,0,0,.08);box-shadow:0 4px 16px rgba(0,0,0,.08)}
+#sumMap{width:100%;height:190px}
+.summary-big{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:8px}
+.summary-big.two{grid-template-columns:1fr 1fr}
+.sum-block{background:rgba(255,255,255,.75);border:1px solid rgba(0,0,0,.07);
+  border-radius:12px;padding:12px;text-align:center;backdrop-filter:blur(8px)}
+.sum-val{font-size:24px;font-weight:700;letter-spacing:-1px;color:#2a3a2a}
+.sum-unit{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px}
+
+.zone-breakdown{background:rgba(255,255,255,.75);border:1px solid rgba(0,0,0,.07);
+  border-radius:14px;padding:14px;margin-bottom:12px;backdrop-filter:blur(8px)}
+.breakdown-title{font-size:10px;letter-spacing:2px;color:var(--muted);
+  text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:10px}
+.zone-brow{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.zone-brow-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.zone-brow-name{font-size:12px;font-weight:700;width:54px;flex-shrink:0}
+.zone-brow-bar-wrap{flex:1;background:rgba(0,0,0,.07);height:6px;border-radius:99px;overflow:hidden}
+.zone-brow-bar{height:100%;border-radius:99px;transition:width 1s ease}
+.zone-brow-pct{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;width:34px;text-align:right}
+.zone-brow-time{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;width:42px;text-align:right}
+
+.strava-section{display:flex;flex-direction:column;gap:10px}
+.strava-note{background:rgba(255,255,255,.75);border:1px solid rgba(0,0,0,.07);
+  border-radius:14px;padding:14px;font-size:12px;color:#4a6a5a;
+  font-family:'JetBrains Mono',monospace;line-height:1.7}
+.strava-note strong{color:#2d7a52}
+.btn-gpx{background:#dff0f7;color:#2a6a8a;border:1.5px solid #a0cce0;
+  border-radius:14px;padding:14px;font-family:'Barlow Condensed',sans-serif;
+  font-size:16px;font-weight:700;letter-spacing:1px;cursor:pointer;text-transform:uppercase;transition:all .2s}
+.btn-gpx:hover{background:#c8e4f4}
+.btn-new-run{background:linear-gradient(135deg,#2d8a5e,#3a7fa8);color:#fff;border:none;
+  border-radius:14px;padding:15px;font-family:'Barlow Condensed',sans-serif;
+  font-size:18px;font-weight:700;letter-spacing:1px;cursor:pointer;text-transform:uppercase;
+  box-shadow:0 4px 16px rgba(45,138,94,.2)}
+
+.toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:10px;padding:12px 20px;
+  font-size:14px;font-family:'JetBrains Mono',monospace;opacity:0;transition:all .3s;
+  z-index:999;white-space:nowrap;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.12);color:#2a3a2a}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{border-color:#4caf82;color:#2d7a52}
+.toast.error{border-color:#e08090;color:#b04060}
+.run-dot{width:14px;height:14px;background:#2a6a8a;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.run-start{width:14px;height:14px;background:#4caf82;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+</style>
+</head>
+<body>
+
+<!-- GPS WAIT OVERLAY -->
+<div id="gpsWait">
+  <div class="gps-spinner"></div>
+  <div class="gps-wait-title">รอ GPS</div>
+  <div class="gps-wait-sub">กำลังขอสัญญาณ GPS...<br>กรุณาอนุญาตการเข้าถึงตำแหน่ง</div>
+  <button class="btn-secondary" style="margin-top:8px;padding:10px 24px" onclick="skipGPS()">ข้ามแผนที่ / ไม่ใช้ GPS</button>
+</div>
+
+<!-- ======================== SETUP ======================== -->
+<div id="setup" class="screen active">
+  <div class="logo-wrap">
+    <div class="logo-word">ZONE 2</div>
+    <div class="logo-sub">Heart Rate Zone Running</div>
+  </div>
+
+  <!-- Setup map showing current location -->
+  <div style="width:100%;max-width:440px;border-radius:18px;overflow:hidden;margin-bottom:16px;border:1px solid #d0e8d8;box-shadow:0 4px 20px rgba(60,120,80,0.1);flex-shrink:0">
+    <div id="setupMap" style="width:100%;height:180px;background:#e8f5e9"></div>
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:rgba(255,255,255,0.75);backdrop-filter:blur(6px)">
+      <div id="setupGpsDot" style="width:8px;height:8px;border-radius:50%;background:#c0c8c0;flex-shrink:0;transition:background .3s"></div>
+      <span id="setupGpsLabel" style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace">รอสัญญาณ GPS...</span>
+    </div>
+  </div>
+
+  <div class="setup-card">
+
+    <!-- Age -->
+    <div>
+      <div class="field-label">อายุ</div>
+      <input type="number" class="age-input" id="ageInput" value="30" min="15" max="85">
+    </div>
+
+    <!-- Zone method -->
+    <div>
+      <div class="field-label">วิธีคิด Zone</div>
+      <div class="method-tabs">
+        <div class="method-tab active" onclick="setMethod('maxhr')" id="tab-maxhr">Max HR</div>
+        <div class="method-tab" onclick="setMethod('karvonen')" id="tab-karvonen">Karvonen</div>
+        <div class="method-tab" onclick="setMethod('lthr')" id="tab-lthr">LTHR</div>
+      </div>
+    </div>
+
+    <!-- Method desc + extra fields -->
+    <div id="desc-maxhr" class="method-desc">
+      <b>Max HR (220 − อายุ)</b><br>คำนวณง่าย เหมาะสำหรับผู้เริ่มต้น<br>Zone 2 = 60–70% ของ Max HR
+    </div>
+    <div id="desc-karvonen" class="method-desc" style="display:none">
+      <b>Karvonen (Heart Rate Reserve)</b><br>แม่นกว่า ใช้ค่า Resting HR ด้วย<br>Zone 2 = restHR + HRR × 60–70%
+    </div>
+    <div id="desc-lthr" class="method-desc" style="display:none">
+      <b>LTHR (Lactate Threshold HR)</b><br>แม่นที่สุด วัดจาก 30 นาที race effort<br>Zone 2 = 80–89% ของ LTHR
+    </div>
+
+    <div id="field-rhr" class="method-field">
+      <div class="field-label">Resting Heart Rate (bpm) — วัดตอนตื่นนอนเช้า</div>
+      <input type="number" class="age-input" id="restingHR" value="60" min="35" max="100">
+    </div>
+    <div id="field-lthr" class="method-field">
+      <div class="field-label">LTHR (bpm) — วิ่งหนักสุด 30 นาที แล้ว avg HR</div>
+      <input type="number" class="age-input" id="lthrInput" value="160" min="100" max="210">
+    </div>
+
+    <!-- Zone table -->
+    <div>
+      <div class="field-label">โซนทั้งหมด</div>
+      <div class="zone-table" id="zoneTable"></div>
+    </div>
+
+    <!-- Custom alert override -->
+    <div>
+      <div class="field-label">ปรับค่า Alert (ไม่บังคับ)</div>
+      <div class="two-col">
+        <div>
+          <div style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:4px">แจ้งเตือนต่ำกว่า (bpm)</div>
+          <input type="number" class="age-input" id="alertLo" placeholder="auto" min="50" max="220" style="font-size:15px;padding:9px 14px">
+          <div id="alertLoHint" style="font-size:10px;color:#4488cc;font-family:'JetBrains Mono',monospace;margin-top:3px"></div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:4px">แจ้งเตือนสูงกว่า (bpm)</div>
+          <input type="number" class="age-input" id="alertHi" placeholder="auto" min="50" max="220" style="font-size:15px;padding:9px 14px">
+          <div id="alertHiHint" style="font-size:10px;color:#e06080;font-family:'JetBrains Mono',monospace;margin-top:3px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sound selector -->
+    <div>
+      <div class="field-label">เสียงแจ้งเตือน HR ต่ำเกิน (เร่งขึ้น)</div>
+      <div class="sound-row">
+        <select class="sound-select" id="soundLow">
+          <option value="beep2">Beep สองครั้ง</option>
+          <option value="beep1">Beep ครั้งเดียว</option>
+          <option value="rise">เสียงขึ้น</option>
+          <option value="chime">Chime</option>
+          <option value="none">ปิดเสียง</option>
+        </select>
+        <button class="btn-preview" onclick="previewSound('low')">▶ ฟัง</button>
+      </div>
+      <div class="field-label" style="margin-top:10px">เสียงแจ้งเตือน HR สูงเกิน (ช้าลง)</div>
+      <div class="sound-row">
+        <select class="sound-select" id="soundHigh">
+          <option value="beep2hi">Beep สูง 2 ครั้ง</option>
+          <option value="beep1hi">Beep สูงครั้งเดียว</option>
+          <option value="fall">เสียงลง</option>
+          <option value="alarm">Alarm</option>
+          <option value="none">ปิดเสียง</option>
+        </select>
+        <button class="btn-preview" onclick="previewSound('high')">▶ ฟัง</button>
+      </div>
+    </div>
+
+    <!-- BT HR -->
+    <div>
+      <div class="field-label">Heart Rate Monitor (Bluetooth)</div>
+      <div class="hr-status" id="hrConnectBtn" onclick="connectHR()">
+        <div class="hr-dot" id="hrDot"></div>
+        <span class="hr-label" id="hrLabel">แตะเพื่อเชื่อมต่อสายคาดอก</span>
+        <span class="hr-detail" id="hrDetail">BLE HRM</span>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="requestGPSThenRun(false)">▶  เริ่มวิ่ง</button>
+    <button class="btn-secondary" onclick="requestGPSThenRun(true)">วิ่งโดยไม่ใช้ HR Monitor</button>
+  </div>
+</div>
+
+<!-- ======================== RUN ======================== -->
+<div id="run" class="screen zone-none">
+  <div class="run-content">
+    <div class="run-topbar">
+      <div class="elapsed-badge" id="elapsedBadge">00:00:00</div>
+      <div class="gps-badge"><div class="gps-dot" id="gpsDot"></div><span id="gpsLabel">GPS</span></div>
+    </div>
+    <div class="hr-display">
+      <div class="hr-number no-hr" id="hrNumber">––</div>
+      <div class="hr-unit">BPM</div>
+      <div class="zone-chip no-hr" id="zoneChip">ยังไม่ได้รับค่า HR</div>
+    </div>
+    <!-- multi-zone bar -->
+    <div class="zone-bar-wrap">
+      <div class="zone-bar-label" id="zbarLabel"></div>
+      <div class="zone-bar-multi" id="zbarMulti">
+        <div class="zone-needle" id="zoneNeedle" style="left:0%"></div>
+      </div>
+    </div>
+    <div class="alert-banner" id="alertBanner"></div>
+    <div class="pace-row">
+      <div>
+        <div style="font-size:9px;letter-spacing:1.5px;color:var(--muted);font-family:'JetBrains Mono',monospace">CURRENT PACE</div>
+        <div class="pace-big no-hr" id="curPaceVal">–:––</div>
+        <div class="pace-unit">min/km</div>
+      </div>
+      <div class="pace-sep"></div>
+      <div style="text-align:right">
+        <div style="font-size:9px;letter-spacing:1.5px;color:var(--muted);font-family:'JetBrains Mono',monospace">AVG PACE</div>
+        <div style="font-size:20px;font-weight:700;color:var(--muted)" id="avgPaceVal">–:––</div>
+        <div class="pace-unit">min/km</div>
+      </div>
+    </div>
+    <div class="map-wrap"><div id="runMap"></div></div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">ระยะทาง</div><div class="stat-val" id="distVal">0.00</div><div class="stat-unit">กม.</div></div>
+      <div class="stat-card"><div class="stat-label">แคลอรี่</div><div class="stat-val" id="calVal">0</div><div class="stat-unit">kcal</div></div>
+      <div class="stat-card"><div class="stat-label">ความเร็ว</div><div class="stat-val" id="speedVal">0.0</div><div class="stat-unit">กม./ชม.</div></div>
+    </div>
+    <div class="notice" id="wakeLockNotice"></div>
+    <div class="run-controls">
+      <button class="btn-pause" id="pauseBtn" onclick="togglePause()">⏸</button>
+      <button class="btn-stop" onclick="confirmStop()">⏹  หยุดวิ่ง</button>
+    </div>
+  </div>
+</div>
+
+<div class="pause-overlay" id="pauseOverlay">
+  <div class="pause-text">PAUSED</div>
+  <div class="pause-sub" id="pauseElapsed">00:00:00</div>
+  <button class="btn-resume" onclick="togglePause()">▶  ต่อ</button>
+</div>
+
+<!-- ======================== SUMMARY ======================== -->
+<div id="summary" class="screen">
+  <div class="summary-inner">
+    <div class="summary-header">
+      <div class="summary-tag">Run Complete</div>
+      <div class="summary-title" id="sumTitle">GREAT RUN!</div>
+      <div class="summary-date" id="sumDate">—</div>
+    </div>
+    <div class="sum-map-wrap"><div id="sumMap"></div></div>
+    <div class="summary-big">
+      <div class="sum-block"><div class="sum-val" id="sumDist">0.00</div><div class="sum-unit">km</div></div>
+      <div class="sum-block"><div class="sum-val" id="sumTime">00:00</div><div class="sum-unit">เวลา</div></div>
+      <div class="sum-block"><div class="sum-val" id="sumPace">–:––</div><div class="sum-unit">min/km</div></div>
+    </div>
+    <div class="summary-big two" style="margin-bottom:12px">
+      <div class="sum-block"><div class="sum-val" id="sumCal">0</div><div class="sum-unit">kcal</div></div>
+      <div class="sum-block"><div class="sum-val" id="sumAvgHR">––</div><div class="sum-unit">avg bpm</div></div>
+    </div>
+    <div class="zone-breakdown">
+      <div class="breakdown-title">Zone Distribution</div>
+      <div id="zoneBreakdownRows"></div>
+    </div>
+    <div class="strava-section">
+      <div class="strava-note">
+        <strong>📤 ส่งเข้า Strava</strong><br>
+        1. กด Export GPX ด้านล่าง<br>
+        2. Strava → + → Upload Activity → เลือกไฟล์ .gpx<br>
+        เส้นทาง + HR ไปด้วย ✓
+      </div>
+      <button class="btn-gpx" onclick="exportGPX()">⬇  Export GPX (เส้นทาง + HR)</button>
+      <button class="btn-new-run" onclick="resetToSetup()">+ วิ่งรอบใหม่</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// =============================================
+// ZONE DEFINITIONS
+// =============================================
+const ZONE_COLORS = ['#6dc47a','#4488cc','#f0b040','#e06050','#9050c0'];
+const ZONE_NAMES  = ['Zone 1','Zone 2','Zone 3','Zone 4','Zone 5'];
+const ZONE_DOTS   = ['#4caf82','#4488cc','#f0a030','#e05040','#8040b0'];
+
+let zones = []; // [{lo, hi, name, color, dot}]
+let zoneMethod = 'maxhr';
+let alertLoBpm = 0, alertHiBpm = 0;
+let targetZone = 1; // index 0-based of Zone 2
+
+function computeZones() {
+  const age = parseInt(document.getElementById('ageInput').value)||30;
+  const rhr = parseInt(document.getElementById('restingHR').value)||60;
+  const lthr = parseInt(document.getElementById('lthrInput').value)||160;
+  let maxHR = 220 - age;
+  let hrr = maxHR - rhr;
+  let z = [];
+
+  if (zoneMethod === 'maxhr') {
+    z = [
+      {lo:0,         hi:Math.round(maxHR*.60)-1},
+      {lo:Math.round(maxHR*.60), hi:Math.round(maxHR*.70)},
+      {lo:Math.round(maxHR*.70)+1, hi:Math.round(maxHR*.80)},
+      {lo:Math.round(maxHR*.80)+1, hi:Math.round(maxHR*.90)},
+      {lo:Math.round(maxHR*.90)+1, hi:maxHR+30},
+    ];
+  } else if (zoneMethod === 'karvonen') {
+    z = [
+      {lo:0,         hi:Math.round(rhr+hrr*.60)-1},
+      {lo:Math.round(rhr+hrr*.60), hi:Math.round(rhr+hrr*.70)},
+      {lo:Math.round(rhr+hrr*.70)+1, hi:Math.round(rhr+hrr*.80)},
+      {lo:Math.round(rhr+hrr*.80)+1, hi:Math.round(rhr+hrr*.90)},
+      {lo:Math.round(rhr+hrr*.90)+1, hi:maxHR+30},
+    ];
+  } else { // lthr
+    z = [
+      {lo:0,         hi:Math.round(lthr*.80)-1},
+      {lo:Math.round(lthr*.80), hi:Math.round(lthr*.89)},
+      {lo:Math.round(lthr*.89)+1, hi:Math.round(lthr*.94)},
+      {lo:Math.round(lthr*.94)+1, hi:Math.round(lthr*1.01)},
+      {lo:Math.round(lthr*1.01)+1, hi:lthr+60},
+    ];
+  }
+  zones = z.map((z,i)=>({...z, name:ZONE_NAMES[i], color:ZONE_COLORS[i], dot:ZONE_DOTS[i]}));
+  targetZone = 1; // always Zone 2 = index 1
+
+  // alert thresholds
+  const loIn = parseInt(document.getElementById('alertLo').value);
+  const hiIn = parseInt(document.getElementById('alertHi').value);
+  alertLoBpm = loIn || zones[targetZone].lo;
+  alertHiBpm = hiIn || zones[targetZone].hi;
+
+  renderZoneTable();
+  renderZoneBarSetup();
+}
+
+function renderZoneTable() {
+  const t = document.getElementById('zoneTable');
+  t.innerHTML = zones.map((z,i)=>`
+    <div class="zone-tr ${i===targetZone?'target-zone':''}">
+      <div class="zone-dot" style="background:${z.dot}"></div>
+      <div class="zone-name" style="color:${i===targetZone?'#2a6a8a':z.dot}">${z.name}${i===targetZone?' ⚡':''}</div>
+      <div class="zone-range">${z.lo===0?'< '+z.hi : z.hi>300?'> '+z.lo : z.lo+' – '+z.hi} bpm</div>
+    </div>`).join('');
+  // Update alert hint labels
+  const loHint = document.getElementById('alertLoHint');
+  const hiHint = document.getElementById('alertHiHint');
+  const loVal = parseInt(document.getElementById('alertLo').value);
+  const hiVal = parseInt(document.getElementById('alertHi').value);
+  if (loHint) loHint.textContent = loVal ? `กำหนดเอง: ${loVal} bpm` : `auto = Zone 2 ต่ำสุด: ${zones[targetZone].lo} bpm`;
+  if (hiHint) hiHint.textContent = hiVal ? `กำหนดเอง: ${hiVal} bpm` : `auto = Zone 2 สูงสุด: ${zones[targetZone].hi} bpm`;
+}
+
+function renderZoneBarSetup() {
+  // Build multi-color bar labels for run screen
+  const totalRange = zones[zones.length-1].hi - zones[0].lo;
+  let segs = '';
+  let labels = '';
+  zones.forEach((z,i)=>{
+    const w = ((Math.min(z.hi,300) - z.lo) / totalRange * 100).toFixed(1);
+    segs += `<div class="zb-seg" style="width:${w}%;background:${z.color}40;border-right:1px solid ${z.color}80"></div>`;
+  });
+  document.getElementById('zbarMulti').innerHTML = segs + `<div class="zone-needle" id="zoneNeedle" style="left:0%"></div>`;
+  // label lo/hi of zone2
+  document.getElementById('zbarLabel').innerHTML =
+    `<span>${zones[targetZone].lo}</span><span>ZONE 2</span><span>${zones[targetZone].hi}</span>`;
+}
+
+function setMethod(m) {
+  zoneMethod = m;
+  ['maxhr','karvonen','lthr'].forEach(k=>{
+    document.getElementById('tab-'+k).classList.toggle('active', k===m);
+    document.getElementById('desc-'+k).style.display = k===m?'block':'none';
+  });
+  document.getElementById('field-rhr').style.display  = m==='karvonen'?'block':'none';
+  document.getElementById('field-lthr').style.display = m==='lthr'?'block':'none';
+  computeZones();
+}
+
+['ageInput','restingHR','lthrInput','alertLo','alertHi'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', computeZones);
+});
+computeZones();
+
+// Stop setup GPS watch when run starts
+function stopSetupGPS() {
+  if (setupGeoWatch) { navigator.geolocation.clearWatch(setupGeoWatch); setupGeoWatch = null; }
+}
+
+// =============================================
+// AUDIO ENGINE
+// =============================================
+let audioCtx = null;
+function getAudio(){ if (!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
+
+function playSound(type) {
+  const ctx = getAudio();
+  const t = ctx.currentTime;
+  // Gain node to boost overall volume
+  const master = ctx.createGain();
+  master.gain.value = 1.0;
+  master.connect(ctx.destination);
+
+  const play = (freq, start, dur, vol=0.85, wave='square') => {
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.connect(g); g.connect(master);
+    o.frequency.value=freq; o.type=wave;
+    g.gain.setValueAtTime(0, t+start);
+    g.gain.linearRampToValueAtTime(vol, t+start+0.008);
+    g.gain.exponentialRampToValueAtTime(0.001, t+start+dur);
+    o.start(t+start); o.stop(t+start+dur+0.05);
+  };
+  if (type==='beep2')    { play(440,.0,.25,'0.8'); play(440,.32,.25,'0.8'); }
+  else if (type==='beep1')   { play(440,.0,.3,'0.85'); }
+  else if (type==='rise')    { play(330,.0,.12,'0.7'); play(520,.15,.12,'0.8'); play(660,.30,.2,'0.85'); }
+  else if (type==='chime')   { play(523,.0,.15,'0.7','sine'); play(659,.18,.15,'0.75','sine'); play(784,.36,.25,'0.8','sine'); }
+  else if (type==='beep2hi') { play(880,.0,.2,'0.85'); play(1047,.28,.2,'0.85'); }
+  else if (type==='beep1hi') { play(880,.0,.3,'0.9'); }
+  else if (type==='fall')    { play(660,.0,.12,'0.8'); play(523,.15,.12,'0.8'); play(330,.30,.2,'0.85'); }
+  else if (type==='alarm')   { [0,.18,.36,.54,.72,.90].forEach((s,i)=>play(i%2?880:550, s, .15,'0.85')); }
+}
+
+function previewSound(which) {
+  const snd = document.getElementById(which==='low'?'soundLow':'soundHigh').value;
+  if (snd!=='none') playSound(snd);
+}
+
+function alertSound(dir) {
+  const snd = document.getElementById(dir==='low'?'soundLow':'soundHigh').value;
+  if (snd!=='none') playSound(snd);
+}
+
+// =============================================
+// BLUETOOTH HR
+// =============================================
+let hrDevice=null, hrChar=null, currentHR=0, hrHistory=[];
+
+async function connectHR() {
+  if (!navigator.bluetooth) { showToast('บราวเซอร์นี้ไม่รองรับ Bluetooth','error'); return; }
+  const dot=document.getElementById('hrDot'), label=document.getElementById('hrLabel');
+  dot.className='hr-dot connecting'; label.textContent='กำลังค้นหา...';
+  try {
+    hrDevice=await navigator.bluetooth.requestDevice({filters:[{services:['heart_rate']}]});
+    label.textContent='กำลังเชื่อมต่อ...';
+    const server=await hrDevice.gatt.connect();
+    const svc=await server.getPrimaryService('heart_rate');
+    hrChar=await svc.getCharacteristic('heart_rate_measurement');
+    await hrChar.startNotifications();
+    hrChar.addEventListener('characteristicvaluechanged',onHRData);
+    hrDevice.addEventListener('gattserverdisconnected',onHRDisconnect);
+    dot.className='hr-dot connected'; label.textContent=hrDevice.name||'HR Monitor';
+    document.getElementById('hrDetail').textContent='เชื่อมต่อแล้ว ✓';
+    showToast('เชื่อมต่อสำเร็จ!','success');
+  } catch(e) {
+    dot.className='hr-dot'; label.textContent='แตะเพื่อเชื่อมต่อสายคาดอก';
+    if (e.name!=='NotFoundError') showToast('ไม่สำเร็จ: '+e.message,'error');
+  }
+}
+function onHRData(event) {
+  const val=event.target.value, flags=val.getUint8(0);
+  currentHR=(flags&0x01)?val.getUint16(1,true):val.getUint8(1);
+  hrHistory.push({t:Date.now(),v:currentHR});
+  if (hrHistory.length>3600) hrHistory.shift();
+  if (document.getElementById('run').classList.contains('active')) updateRunHR();
+}
+function onHRDisconnect() {
+  document.getElementById('hrDot').className='hr-dot';
+  showToast('HR Monitor ตัดการเชื่อมต่อ','error');
+}
+
+// =============================================
+// GPS
+// =============================================
+let geoWatch=null, gpsReady=false, gpsWaitCallback=null;
+let totalDist=0, lastPos=null, gpsHistory=[];
+
+function requestGPSThenRun(noHR) {
+  computeZones();
+  const gpsWait = document.getElementById('gpsWait');
+  gpsWait.classList.add('show');
+  gpsWaitCallback = ()=>{ gpsWait.classList.remove('show'); initRun(noHR); };
+
+  navigator.geolocation.getCurrentPosition(
+    (pos)=>{
+      gpsReady=true;
+      // start watchPosition
+      startGPSWatch();
+      gpsWaitCallback();
+    },
+    (err)=>{
+      gpsWait.classList.remove('show');
+      if (err.code===1) {
+        showToast('ไม่ได้รับอนุญาต GPS','error');
+        // still allow run without gps
+        initRun(noHR);
+      } else {
+        initRun(noHR);
+      }
+    },
+    {enableHighAccuracy:true, timeout:15000}
+  );
+}
+
+function skipGPS() {
+  document.getElementById('gpsWait').classList.remove('show');
+  initRun(false);
+}
+
+function startGPSWatch() {
+  if (geoWatch) return;
+  geoWatch=navigator.geolocation.watchPosition(onGPS, ()=>{}, {enableHighAccuracy:true, maximumAge:1000});
+}
+function stopGPS() { if (geoWatch) { navigator.geolocation.clearWatch(geoWatch); geoWatch=null; } }
+
+function onGPS(pos) {
+  document.getElementById('gpsDot').className='gps-dot active';
+  document.getElementById('gpsLabel').textContent='GPS';
+  if (isPaused) return;
+  const {latitude:lat,longitude:lon,accuracy,speed:gs}=pos.coords;
+  const ts=Date.now();
+  gpsHistory.push({lat,lon,ts,accuracy});
+  if (lastPos) {
+    const d=haversine(lastPos.lat,lastPos.lon,lat,lon);
+    if (d<0.05&&accuracy<30) {
+      totalDist+=d;
+      if (gs&&gs>0.5) {
+        curPaceSec=3600/(gs*3.6);
+        document.getElementById('curPaceVal').textContent=fmtPace(curPaceSec);
+        document.getElementById('curPaceVal').className='pace-big '+getZoneCls(currentHR);
+      }
+    }
+  }
+  lastPos={lat,lon};
+  document.getElementById('distVal').textContent=totalDist.toFixed(2);
+  const el=getElapsedSec();
+  if (totalDist>0.02&&el>10) {
+    document.getElementById('avgPaceVal').textContent=fmtPace(el/totalDist);
+    document.getElementById('speedVal').textContent=(totalDist/(el/3600)).toFixed(1);
+  }
+  // update map
+  if (runMap) {
+    const ll=L.latLng(lat,lon);
+    runPolyline.addLatLng(ll);
+    if (gpsHistory.length===1) {
+      runStartMarker=L.marker(ll,{icon:L.divIcon({className:'',html:'<div class="run-start"></div>',iconSize:[14,14],iconAnchor:[7,7]})}).addTo(runMap);
+    }
+    if (runMarker) runMarker.setLatLng(ll);
+    else runMarker=L.marker(ll,{icon:L.divIcon({className:'',html:'<div class="run-dot"></div>',iconSize:[14,14],iconAnchor:[7,7]})}).addTo(runMap);
+    runMap.panTo(ll,{animate:true,duration:.5});
+  }
+}
+function haversine(la1,lo1,la2,lo2){
+  const R=6371,dL=(la2-la1)*Math.PI/180,dO=(lo2-lo1)*Math.PI/180;
+  const a=Math.sin(dL/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dO/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function fmtPace(s){const m=Math.floor(s/60),sec=Math.round(s%60);return `${m}:${String(sec).padStart(2,'0')}`}
+
+// =============================================
+// SETUP MAP — show current location on setup screen
+// =============================================
+let setupMap = null, setupMarker = null, setupGeoWatch = null;
+
+function initSetupMap() {
+  if (setupMap) return;
+  setupMap = L.map('setupMap', {zoomControl:false, attributionControl:false, dragging:true, touchZoom:true});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19}).addTo(setupMap);
+  setupMap.setView([13.75, 100.5], 13);
+  // Start watching GPS for setup map
+  if (navigator.geolocation) {
+    setupGeoWatch = navigator.geolocation.watchPosition(
+      (pos) => {
+        const {latitude:lat, longitude:lon} = pos.coords;
+        const ll = L.latLng(lat, lon);
+        const dot = document.getElementById('setupGpsDot');
+        const lbl = document.getElementById('setupGpsLabel');
+        if (dot) { dot.style.background = '#4caf82'; dot.style.animation = 'pulse-dot 2s infinite'; }
+        if (lbl) lbl.textContent = `📍 ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+        if (!setupMarker) {
+          setupMarker = L.marker(ll, {icon: L.divIcon({className:'', html:'<div class="run-start"></div>', iconSize:[14,14], iconAnchor:[7,7]})}).addTo(setupMap);
+          setupMap.setView(ll, 15);
+        } else {
+          setupMarker.setLatLng(ll);
+        }
+      },
+      (err) => {
+        const lbl = document.getElementById('setupGpsLabel');
+        if (lbl) lbl.textContent = err.code===1 ? 'ไม่ได้รับอนุญาต GPS' : 'ไม่พบสัญญาณ GPS';
+      },
+      {enableHighAccuracy:true, maximumAge:3000}
+    );
+  }
+}
+
+// Init setup map after page load
+window.addEventListener('load', () => {
+  setTimeout(() => { initSetupMap(); setupMap && setupMap.invalidateSize(); }, 300);
+});
+
+function initRunMap() {
+  if (runMap){runMap.remove();runMap=null;}
+  runMap=L.map('runMap',{zoomControl:false,attributionControl:false});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(runMap);
+  runPolyline=L.polyline([],{color:'#2a6a8a',weight:4,opacity:.85}).addTo(runMap);
+  runMap.setView([13.75,100.5],15);
+}
+
+// =============================================
+// CALORIES
+// =============================================
+let calInterval=null, lastDistForCal=0, calories=0;
+function startCalCalc(){
+  calInterval=setInterval(()=>{
+    if (isPaused) return;
+    const hasHR=currentHR>0, moving=totalDist>lastDistForCal+0.001;
+    lastDistForCal=totalDist;
+    if (!hasHR&&!moving) return;
+    const hr=hasHR?currentHR:120;
+    const age=parseInt(document.getElementById('ageInput').value)||30;
+    const maxHR=220-age;
+    const vo2=Math.max(0,(hr-95.7)*(50.72/(maxHR-95.7))+3.5);
+    calories+=(vo2*70*5/1000)/60;
+    document.getElementById('calVal').textContent=Math.round(calories);
+  },1000);
+}
+
+// =============================================
+// ZONE LOGIC
+// =============================================
+function getZoneIdx(hr){
+  if (hr<=0) return -1;
+  for (let i=0;i<zones.length;i++) if (hr>=zones[i].lo&&hr<=zones[i].hi) return i;
+  return zones.length-1;
+}
+function getZoneCls(hr){
+  const i=getZoneIdx(hr);
+  if (i===targetZone) return 'zone-ok';
+  if (i<targetZone) return 'zone-low';
+  if (i>targetZone) return 'zone-high';
+  return 'no-hr';
+}
+
+let zoneTime=[], lastZone=-1, lastZoneTs=null;
+let lastAlertDir=null, alertTimeout=null, curPaceSec=0;
+
+function updateRunHR(){
+  const hr=currentHR;
+  const zi=getZoneIdx(hr);
+  const cls=getZoneCls(hr);
+  // zone time
+  if (lastZone>=0&&lastZoneTs!==null&&!isPaused){
+    zoneTime[lastZone]=(zoneTime[lastZone]||0)+(Date.now()-lastZoneTs)/1000;
+  }
+  lastZone=zi; lastZoneTs=Date.now();
+
+  // HR number
+  const numEl=document.getElementById('hrNumber');
+  numEl.textContent=hr>0?hr:'––';
+  numEl.className='hr-number '+cls;
+
+  // chip
+  const chip=document.getElementById('zoneChip');
+  chip.className='zone-chip '+cls;
+  if (zi===targetZone)     chip.textContent='✓ Zone 2 — Perfect!';
+  else if (zi<targetZone)  chip.textContent='↑ ต่ำกว่า Zone 2 — เร่งขึ้น';
+  else                     chip.textContent='↓ เกิน Zone 2 — ช้าลง!';
+  if (hr<=0)               chip.textContent='ยังไม่ได้รับค่า HR';
+
+  // background
+  const runEl=document.getElementById('run');
+  runEl.className='screen active '+(zi===targetZone?'zone-ok':zi<targetZone?'zone-low':zi>targetZone?'zone-high':'zone-none');
+
+  // needle on multi-zone bar
+  if (zones.length>0&&hr>0){
+    const totalRange=zones[zones.length-1].hi-zones[0].lo;
+    const pct=Math.min(98,Math.max(1,((hr-zones[0].lo)/totalRange*100)));
+    const needle=document.getElementById('zoneNeedle');
+    if (needle) needle.style.left=pct+'%';
+  }
+
+  // Alert using alertLo/alertHi
+  const banner=document.getElementById('alertBanner');
+  const isLow  = hr>0 && hr<alertLoBpm;
+  const isHigh = hr>0 && hr>alertHiBpm;
+  if (!isLow&&!isHigh){
+    banner.className='alert-banner'; lastAlertDir=null;
+  } else if (isLow&&lastAlertDir!=='low'){
+    alertSound('low');
+    banner.textContent=`⬆  HR ต่ำกว่า ${alertLoBpm} bpm — วิ่งเร็วขึ้น`;
+    banner.className='alert-banner slow show';
+    clearTimeout(alertTimeout); alertTimeout=setTimeout(()=>banner.className='alert-banner',4500);
+    lastAlertDir='low';
+  } else if (isHigh&&lastAlertDir!=='high'){
+    alertSound('high');
+    banner.textContent=`⬇  HR เกิน ${alertHiBpm} bpm — ช้าลง!`;
+    banner.className='alert-banner fast show';
+    clearTimeout(alertTimeout); alertTimeout=setTimeout(()=>banner.className='alert-banner',4500);
+    lastAlertDir='high';
+  }
+}
+
+// =============================================
+// TIMER
+// =============================================
+let startTime=null,pausedTime=0,pauseStart=null,isPaused=false,runtimeInterval=null;
+function getElapsedSec(){
+  if (!startTime) return 0;
+  const now=Date.now(); let e=now-startTime-pausedTime;
+  if (isPaused&&pauseStart) e-=(now-pauseStart);
+  return e/1000;
+}
+function fmtTime(sec){
+  sec=Math.max(0,Math.floor(sec));
+  const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+// =============================================
+// WAKE LOCK
+// =============================================
+let wakeLock=null;
+async function requestWakeLock(){
+  if ('wakeLock' in navigator){
+    try{wakeLock=await navigator.wakeLock.request('screen');document.getElementById('wakeLockNotice').textContent='🔆 หน้าจอจะไม่ดับ';}
+    catch(e){document.getElementById('wakeLockNotice').textContent='';}
+  }
+}
+function releaseWakeLock(){if(wakeLock){wakeLock.release();wakeLock=null;}}
+document.addEventListener('visibilitychange',async()=>{
+  if(wakeLock&&document.visibilityState==='visible'){try{wakeLock=await navigator.wakeLock.request('screen');}catch(e){}}
+});
+
+// =============================================
+// INIT RUN
+// =============================================
+function initRun(noHR=false){
+  startTime=Date.now(); pausedTime=0;
+  totalDist=0; calories=0; currentHR=0; curPaceSec=0;
+  hrHistory=[]; gpsHistory=[];
+  zoneTime=new Array(zones.length).fill(0);
+  lastPos=null; lastZone=-1; lastZoneTs=null; lastAlertDir=null;
+  lastDistForCal=0; isPaused=false;
+  showScreen('run');
+  stopSetupGPS();
+  setTimeout(()=>{initRunMap();runMap&&runMap.invalidateSize();},250);
+  if (!geoWatch) startGPSWatch();
+  runtimeInterval=setInterval(()=>{
+    const e=getElapsedSec();
+    document.getElementById('elapsedBadge').textContent=fmtTime(e);
+    document.getElementById('pauseElapsed').textContent=fmtTime(e);
+  },500);
+  startCalCalc();
+  requestWakeLock();
+  renderZoneBarSetup();
+  if (noHR){document.getElementById('hrNumber').textContent='––';document.getElementById('hrNumber').className='hr-number no-hr';}
+}
+
+function togglePause(){
+  isPaused=!isPaused;
+  if(isPaused){pauseStart=Date.now();document.getElementById('pauseOverlay').className='pause-overlay show';document.getElementById('pauseBtn').textContent='▶';}
+  else{if(pauseStart)pausedTime+=Date.now()-pauseStart;pauseStart=null;document.getElementById('pauseOverlay').className='pause-overlay';document.getElementById('pauseBtn').textContent='⏸';}
+}
+function confirmStop(){if(confirm('หยุดวิ่งแล้วไปดูสรุป?'))endRun();}
+function endRun(){
+  if(lastZone>=0&&lastZoneTs!==null){zoneTime[lastZone]=(zoneTime[lastZone]||0)+(Date.now()-lastZoneTs)/1000;}
+  stopGPS(); clearInterval(runtimeInterval); clearInterval(calInterval); releaseWakeLock(); stopSetupGPS();
+  showSummary();
+}
+
+// =============================================
+// SUMMARY
+// =============================================
+function showSummary(){
+  const elapsed=getElapsedSec();
+  const avgHR=hrHistory.length?Math.round(hrHistory.reduce((a,b)=>a+b.v,0)/hrHistory.length):0;
+  const totalZoneSec=zoneTime.reduce((a,b)=>a+b,0)||1;
+
+  document.getElementById('sumDist').textContent=totalDist.toFixed(2);
+  document.getElementById('sumTime').textContent=fmtTime(elapsed).slice(0,5);
+  document.getElementById('sumCal').textContent=Math.round(calories);
+  document.getElementById('sumAvgHR').textContent=avgHR||'––';
+  document.getElementById('sumDate').textContent=new Date().toLocaleString('th-TH');
+  document.getElementById('sumPace').textContent=totalDist>0?fmtPace(elapsed/totalDist):'–:––';
+
+  const z2pct=zoneTime[1]?Math.round(zoneTime[1]/totalZoneSec*100):0;
+  document.getElementById('sumTitle').textContent=z2pct>70?'PERFECT ZONE 2!':z2pct>50?'GREAT RUN!':'GOOD EFFORT!';
+
+  // Zone breakdown rows
+  const rows=document.getElementById('zoneBreakdownRows');
+  rows.innerHTML='';
+  setTimeout(()=>{
+    zones.forEach((z,i)=>{
+      const pct=Math.round((zoneTime[i]||0)/totalZoneSec*100);
+      const mins=Math.floor((zoneTime[i]||0)/60);
+      const secs=Math.round((zoneTime[i]||0)%60);
+      const timeStr=`${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+      const row=document.createElement('div');
+      row.className='zone-brow';
+      row.innerHTML=`
+        <div class="zone-brow-dot" style="background:${z.dot}"></div>
+        <div class="zone-brow-name" style="color:${i===targetZone?'#2a6a8a':z.dot}">${z.name}</div>
+        <div class="zone-brow-bar-wrap"><div class="zone-brow-bar" id="zbar${i}" style="background:${z.dot};width:0%"></div></div>
+        <div class="zone-brow-pct" id="zpct${i}">0%</div>
+        <div class="zone-brow-time" id="ztime${i}">00:00</div>`;
+      rows.appendChild(row);
+      setTimeout(()=>{
+        document.getElementById('zbar'+i).style.width=pct+'%';
+        document.getElementById('zpct'+i).textContent=pct+'%';
+        document.getElementById('ztime'+i).textContent=timeStr;
+      },200+i*80);
+    });
+  },200);
+
+  showScreen('summary');
+
+  // summary map
+  setTimeout(()=>{
+    if (sumMap){sumMap.remove();sumMap=null;}
+    sumMap=L.map('sumMap',{zoomControl:false,attributionControl:false});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(sumMap);
+    if (gpsHistory.length>1){
+      const lls=gpsHistory.map(p=>[p.lat,p.lon]);
+      L.polyline(lls,{color:'#2a6a8a',weight:4,opacity:.9}).addTo(sumMap);
+      gpsHistory.forEach((p,i)=>{
+        if (i%8!==0) return;
+        const hrS=hrHistory.find(h=>Math.abs(h.t-p.ts)<3000);
+        let col='#888';
+        if (hrS){const zi=getZoneIdx(hrS.v);col=zi>=0?zones[zi].dot:'#888';}
+        L.circleMarker([p.lat,p.lon],{radius:4,fillColor:col,color:'#fff',weight:1.5,fillOpacity:.9}).addTo(sumMap);
+      });
+      L.marker(lls[0],{icon:L.divIcon({className:'',html:'<div class="run-start"></div>',iconSize:[14,14],iconAnchor:[7,7]})}).addTo(sumMap);
+      L.marker(lls[lls.length-1],{icon:L.divIcon({className:'',html:'<div class="run-dot"></div>',iconSize:[14,14],iconAnchor:[7,7]})}).addTo(sumMap);
+      sumMap.fitBounds(L.polyline(lls).getBounds(),{padding:[20,20]});
+    } else {sumMap.setView([13.75,100.5],13);}
+    sumMap.invalidateSize();
+  },400);
+}
+
+// =============================================
+// GPX
+// =============================================
+function buildGPX(){
+  let pts='';
+  gpsHistory.forEach(p=>{
+    pts+=`    <trkpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}">\n      <time>${new Date(p.ts).toISOString()}</time>\n`;
+    const h=hrHistory.find(h=>Math.abs(h.t-p.ts)<2000);
+    if(h) pts+=`      <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>${h.v}</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>\n`;
+    pts+=`    </trkpt>\n`;
+  });
+  return new Blob([`<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Zone2Runner" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">\n  <trk>\n    <name>Zone 2 Run ${new Date(startTime).toISOString()}</name>\n    <trkseg>\n${pts}    </trkseg>\n  </trk>\n</gpx>`],{type:'application/gpx+xml'});
+}
+function exportGPX(){
+  const url=URL.createObjectURL(buildGPX());
+  const a=document.createElement('a');
+  a.href=url;a.download=`zone2run_${Date.now()}.gpx`;a.click();
+  URL.revokeObjectURL(url);
+  showToast('ดาวน์โหลด GPX แล้ว ✓','success');
+}
+
+// =============================================
+// UTILS
+// =============================================
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;setTimeout(()=>t.className='toast',3500);}
+function resetToSetup(){showScreen('setup');}
+</script>
+</body>
+</html>
